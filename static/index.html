@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Чат с LLM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f6f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container { width: 100%; max-width: 720px; }
+    h1 { margin-bottom: 20px; font-size: 24px; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e3e5ea;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      resize: vertical;
+      font: inherit;
+    }
+
+    .field { margin-bottom: 12px; }
+
+    .btn {
+      background: #2563eb; color: #fff; border: none; padding: 10px 18px;
+      border-radius: 8px; font-size: 15px; cursor: pointer;
+    }
+    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .output {
+      background: #f9fafb; border: 1px solid #e3e5ea; border-radius: 8px;
+      padding: 12px; min-height: 120px; white-space: pre-wrap; word-wrap: break-word;
+    }
+    .typing { color: #6b7280; font-style: italic; }
+
+    .error {
+      background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;
+      border-radius: 8px; padding: 12px; margin-bottom: 16px; white-space: pre-wrap;
+    }
+    .hidden { display: none; }
+    .footer { margin-top: 8px; text-align: right; font-size: 13px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Чат с LLM</h1>
+
+    <div id="errorBox" class="error hidden"></div>
+
+    <div class="card">
+      <div class="field">
+        <textarea id="prompt" placeholder="Введите сообщение..."></textarea>
+      </div>
+      <div class="footer">
+        <button id="sendBtn" class="btn">Отправить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="output" class="output">Ответ появится здесь...</div>
+    </div>
+  </div>
+
+  <script>
+    const sendBtn = document.getElementById('sendBtn');
+    const promptEl = document.getElementById('prompt');
+    const outputEl = document.getElementById('output');
+    const errorBox = document.getElementById('errorBox');
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.classList.remove('hidden');
+    }
+    function clearError() {
+      errorBox.classList.add('hidden');
+    }
+
+    async function send() {
+      const text = promptEl.value.trim();
+      // История не хранится: отправляется только текущее сообщение
+      const messages = text ? [{ role: 'user', content: text }] : [];
+
+      clearError();
+      sendBtn.disabled = true;
+      outputEl.classList.add('typing');
+      outputEl.textContent = 'печатает…';
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: messages,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          outputEl.classList.remove('typing');
+          outputEl.textContent = '';
+          throw new Error(data.detail || ('Ошибка запроса: ' + res.status));
+        }
+
+        outputEl.classList.remove('typing');
+        outputEl.textContent = data.reply || '';
+        promptEl.value = '';
+      } catch (err) {
+        showError(err.message || 'Неизвестная ошибка');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', send);
+
+    promptEl.addEventListener('keydown', (e) => {
+      // Ctrl+Enter / Cmd+Enter для отправки
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        send();
+      }
+    });
+  </script>
+</body>
+</html>
