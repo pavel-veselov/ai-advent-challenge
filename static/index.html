@@ -4,37 +4,114 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Чат с LLM</title>
+  <link rel="icon" href="data:,">
   <style>
+    :root {
+      --bg: #f5f6f8;
+      --fg: #1a1a2e;
+      --card-bg: #ffffff;
+      --card-border: #e3e5ea;
+      --input-border: #d1d5db;
+      --input-bg: #ffffff;
+      --input-fg: #1a1a2e;
+      --output-bg: #f9fafb;
+      --output-border: #e3e5ea;
+      --muted: #6b7280;
+      --typing: #6b7280;
+      --btn-disabled: #9ca3af;
+      --pane-free-bg: #eef2ff;
+      --pane-free-fg: #3730a3;
+      --pane-con-bg: #ecfdf5;
+      --pane-con-fg: #065f46;
+    }
+    :root[data-theme="dark"] {
+      --bg: #111827;
+      --fg: #e5e7eb;
+      --card-bg: #1f2937;
+      --card-border: #374151;
+      --input-border: #4b5563;
+      --input-bg: #111827;
+      --input-fg: #e5e7eb;
+      --output-bg: #111827;
+      --output-border: #374151;
+      --muted: #9ca3af;
+      --typing: #9ca3af;
+      --btn-disabled: #4b5563;
+      --pane-free-bg: #312e81;
+      --pane-free-fg: #c7d2fe;
+      --pane-con-bg: #064e3b;
+      --pane-con-fg: #a7f3d0;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f6f8;
-      color: #1a1a2e;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 24px;
+      background: var(--bg);
+      color: var(--fg);
+      transition: background 0.2s, color 0.2s;
+      overflow: hidden;
     }
-    .container { width: 100%; max-width: 720px; }
-    h1 { margin-bottom: 20px; font-size: 24px; }
+
+    .app { display: flex; height: 100vh; }
+
+    .sidebar {
+      width: 360px;
+      flex-shrink: 0;
+      background: var(--card-bg);
+      border-right: 1px solid var(--card-border);
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    #normalMain { min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    #normalMain.hidden { display: none; }
+    #normalPanel { display: flex; flex-direction: column; }
+    #normalPanel.hidden { display: none; }
+    #normalPanel textarea { min-height: 70px; }
+    #compareMain { min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    #compareMain .compare-row { flex: 1; }
+    #compareMain.hidden { display: none; }
+
+    .side-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    h1 { font-size: 18px; }
+    .theme-btn {
+      background: var(--card-border); color: var(--fg); border: none;
+      padding: 6px 10px; border-radius: 8px; font-size: 13px; cursor: pointer;
+      white-space: nowrap;
+    }
 
     .card {
-      background: #fff;
-      border: 1px solid #e3e5ea;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
+      padding: 16px;
     }
+    .main .card { margin-bottom: 0; }
 
     textarea {
       width: 100%;
-      min-height: 90px;
-      padding: 12px;
-      border: 1px solid #d1d5db;
+      min-height: 70px;
+      padding: 10px;
+      border: 1px solid var(--input-border);
       border-radius: 8px;
       resize: vertical;
       font: inherit;
+      background: var(--input-bg);
+      color: var(--input-fg);
     }
+    textarea::placeholder { color: var(--muted); }
 
     .field { margin-bottom: 12px; }
 
@@ -42,47 +119,273 @@
       background: #2563eb; color: #fff; border: none; padding: 10px 18px;
       border-radius: 8px; font-size: 15px; cursor: pointer;
     }
-    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .btn:disabled { background: var(--btn-disabled); cursor: not-allowed; }
 
     .output {
-      background: #f9fafb; border: 1px solid #e3e5ea; border-radius: 8px;
-      padding: 12px; min-height: 120px; white-space: pre-wrap; word-wrap: break-word;
+      background: var(--output-bg); border: 1px solid var(--output-border); border-radius: 8px;
+      padding: 12px; white-space: pre-wrap; word-wrap: break-word;
     }
-    .typing { color: #6b7280; font-style: italic; }
+    .typing { color: var(--typing); font-style: italic; }
 
     .error {
       background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;
-      border-radius: 8px; padding: 12px; margin-bottom: 16px; white-space: pre-wrap;
+      border-radius: 8px; padding: 12px; white-space: pre-wrap;
     }
     .hidden { display: none; }
-    .footer { margin-top: 8px; text-align: right; font-size: 13px; color: #6b7280; }
+    .footer { display: flex; justify-content: flex-end; gap: 8px; font-size: 13px; color: var(--muted); }
+
+    .compare-row {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .compare-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .compare-pane .output { flex: 1; }
+    .run { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--input-border); }
+    .run .output { margin-top: 6px; }
+    .run-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    }
+    .badge.ok { background: var(--pane-con-bg); color: var(--pane-con-fg); }
+    .badge.bad { background: #fee2e2; color: #991b1b; }
+    .badge.dim { background: var(--card-border); color: var(--fg); font-weight: 400; }
+
+    .stab-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .stab-badge {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700;
+    }
+    .stab-badge.ok { background: var(--pane-con-bg); color: var(--pane-con-fg); }
+    .stab-badge.bad { background: #fee2e2; color: #991b1b; }
+    .stab-title { font-weight: 600; }
+    .stab-sub { font-size: 13px; color: var(--muted); }
+    .stab-bar {
+      height: 10px; border-radius: 6px; background: var(--input-border);
+      overflow: hidden; margin-bottom: 10px;
+    }
+    .stab-fill { height: 100%; width: 0; background: #22c55e; transition: width 0.4s; }
+    .stab-fill.bad { background: #ef4444; }
+    .stab-schema {
+      font-family: ui-monospace, monospace; font-size: 12px;
+      color: var(--muted); word-break: break-all; margin-bottom: 10px;
+    }
+    .output.json { font-family: ui-monospace, monospace; font-size: 13px; }
+    .jkey { color: #60a5fa; }
+    .jstr { color: #34d399; }
+    .jnum { color: #fbbf24; }
+    .jbool, .jnull { color: #f472b6; }
+    .compare-pane .pane-title {
+      font-weight: 600; margin-bottom: 8px; padding: 6px 10px;
+      border-radius: 6px; font-size: 14px;
+    }
+    .pane-free .pane-title { background: var(--pane-free-bg); color: var(--pane-free-fg); }
+    .pane-constrained .pane-title { background: var(--pane-con-bg); color: var(--pane-con-fg); }
+    .meta {
+      font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace;
+      margin-bottom: 4px; white-space: pre-wrap;
+    }
+
+    .mode-switch { display: flex; flex-direction: column; gap: 8px; }
+    .mode-btn {
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--card-border); background: var(--card-bg);
+      color: var(--muted); font-size: 14px; cursor: pointer; text-align: left;
+    }
+    .mode-btn.active {
+      background: #2563eb; color: #fff; border-color: #2563eb;
+    }
+
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--card-border);
+    }
+    .btn-ghost:hover { color: var(--fg); }
+
+    .chat-log {
+      display: flex; flex-direction: column; gap: 12px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .chat-empty { color: var(--muted); text-align: center; padding: 20px; }
+    .msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+    .msg.user {
+      align-self: flex-end; background: #2563eb; color: #fff; border-bottom-right-radius: 4px;
+    }
+    .msg.assistant {
+      align-self: flex-start; background: var(--output-bg); color: var(--fg);
+      border: 1px solid var(--output-border); border-bottom-left-radius: 4px;
+    }
+    .msg.typing { color: var(--typing); font-style: italic; }
+
+    .settings .settings-title { font-weight: 600; margin-bottom: 12px; }
+    .settings label, .side-panel label {
+      display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px;
+    }
+    .settings input, .settings textarea, .side-panel input, .side-panel textarea {
+      border: 1px solid var(--input-border); border-radius: 8px;
+      padding: 8px 10px; font: inherit; width: 100%;
+      background: var(--input-bg); color: var(--input-fg);
+    }
+    .settings-row { display: flex; gap: 12px; }
+    .settings-row .field { flex: 1; min-width: 0; }
+
+    @media (max-width: 800px) {
+      .app { flex-direction: column; height: auto; }
+      body { overflow: auto; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--card-border); }
+      .chat-log { min-height: 300px; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Чат с LLM</h1>
-
-    <div id="errorBox" class="error hidden"></div>
-
-    <div class="card">
-      <div class="field">
-        <textarea id="prompt" placeholder="Введите сообщение..."></textarea>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="side-head">
+        <h1>Чат с LLM</h1>
+        <button id="themeBtn" class="theme-btn" type="button"></button>
       </div>
-      <div class="footer">
-        <button id="sendBtn" class="btn">Отправить</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div id="output" class="output">Ответ появится здесь...</div>
-    </div>
+      <div id="errorBox" class="error hidden"></div>
+
+      <div class="mode-switch">
+        <button id="modeNormal" class="mode-btn active" type="button">Обычный режим</button>
+        <button id="modeCompare" class="mode-btn" type="button">Сравнительный режим</button>
+      </div>
+
+      <div id="comparePanel" class="side-panel hidden">
+        <div class="field">
+          <textarea id="cmpPrompt" placeholder="Введите prompt для сравнения..."></textarea>
+        </div>
+        <div class="footer" style="margin-bottom: 14px;">
+          <button id="cmpBtn" class="btn">Сравнить</button>
+        </div>
+
+        <div class="settings">
+          <div class="settings-title">Настройки «с ограничениями»</div>
+          <div class="field">
+            <label for="fmtGuide">Описание формата ответа</label>
+            <textarea id="fmtGuide" rows="5" placeholder='Верни только валидный JSON: {"summary":"...","points":["..."],"action":"..."}'></textarea>
+          </div>
+          <div class="field">
+            <label for="maxTokens">Лимит длины (max_tokens)</label>
+            <input id="maxTokens" type="number" min="1" value="300">
+          </div>
+          <div class="field">
+            <label for="stopSeq">Стоп-последовательность</label>
+            <input id="stopSeq" type="text" value="КОНЕЦ" placeholder="КОНЕЦ">
+          </div>
+        </div>
+
+        <div class="settings" style="margin-top: 14px;">
+          <div class="field">
+            <label for="stabilityRuns">Прогонов одного запроса (1–20)</label>
+            <input id="stabilityRuns" type="number" min="1" max="20" value="3">
+          </div>
+          <button id="stabilityBtn" class="btn" style="width: 100%;">Проверить стабильность формата</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="normalMain">
+        <div id="chatLog" class="chat-log"></div>
+        <div id="normalPanel">
+          <div class="field">
+            <textarea id="prompt" placeholder="Введите сообщение..."></textarea>
+          </div>
+          <div class="footer">
+            <button id="clearBtn" class="btn btn-ghost">Очистить чат</button>
+            <button id="sendBtn" class="btn">Отправить</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="compareMain" class="hidden">
+        <div class="card compare-row">
+          <div class="compare-pane pane-free">
+            <div class="pane-title">Без ограничений</div>
+            <div id="freeMeta" class="meta"></div>
+            <div id="freeOut" class="output">—</div>
+          </div>
+          <div class="compare-pane pane-constrained">
+            <div class="pane-title">С ограничениями</div>
+            <div id="conMeta" class="meta"></div>
+            <div id="conOut" class="output">—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="settings-title">Стабильность формата</div>
+          <div id="stabilitySummary" class="meta"></div>
+          <div id="stabilityOut"></div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
     const sendBtn = document.getElementById('sendBtn');
     const promptEl = document.getElementById('prompt');
-    const outputEl = document.getElementById('output');
     const errorBox = document.getElementById('errorBox');
+    const normalPanel = document.getElementById('normalPanel');
+    const comparePanel = document.getElementById('comparePanel');
+    const modeNormal = document.getElementById('modeNormal');
+    const modeCompare = document.getElementById('modeCompare');
+    const clearBtn = document.getElementById('clearBtn');
+    const chatLog = document.getElementById('chatLog');
+
+    // История диалога в обычном режиме
+    let history = [];
+
+    const cmpBtn = document.getElementById('cmpBtn');
+    const cmpPromptEl = document.getElementById('cmpPrompt');
+    const fmtGuideEl = document.getElementById('fmtGuide');
+    const maxTokensEl = document.getElementById('maxTokens');
+    const stopSeqEl = document.getElementById('stopSeq');
+
+    // Универсальный формат ответа по умолчанию (JSON-схема + условие завершения)
+    const DEFAULT_FORMAT_GUIDE = [
+      'Требования к формату ответа: верни ТОЛЬКО валидный JSON без пояснений и без',
+      'обрамляющих ```json```. Строго следуй схеме:',
+      '{ "summary": "краткий тезис в одну строку",',
+      '  "points": ["пункт 1", "пункт 2", "пункт 3"],',
+      '  "action": "рекомендуемое следующее действие" }',
+      'Не добавляй ничего до или после объекта — только чистый JSON.',
+      'Условие завершения: сразу после закрывающей фигурной скобки напиши с',
+      'новой строки ровно слово КОНЕЦ и остановись.',
+    ].join('\n');
+    if (fmtGuideEl.value.trim() === '') {
+      fmtGuideEl.value = DEFAULT_FORMAT_GUIDE;
+    }
+    const freeOut = document.getElementById('freeOut');
+    const conOut = document.getElementById('conOut');
+    const freeMeta = document.getElementById('freeMeta');
+    const conMeta = document.getElementById('conMeta');
+
+    // Тема: по умолчанию тёмная, выбор запоминается
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeBtn');
+    const THEME_KEY = 'theme';
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+      localStorage.setItem(THEME_KEY, theme);
+    }
+    function initTheme() {
+      const saved = localStorage.getItem(THEME_KEY);
+      let theme = saved ? saved : 'dark';
+      if (!saved) {
+        try { theme = (window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; } catch (e) {}
+      }
+      applyTheme(theme);
+    }
+    themeBtn.addEventListener('click', () => {
+      applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+    initTheme();
 
     function showError(msg) {
       errorBox.textContent = msg;
@@ -92,37 +395,63 @@
       errorBox.classList.add('hidden');
     }
 
+    function renderChat() {
+      chatLog.innerHTML = '';
+      if (history.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'chat-empty';
+        empty.textContent = 'Начните диалог — модель запомнит контекст.';
+        chatLog.appendChild(empty);
+        return;
+      }
+      for (const m of history) {
+        appendMessage(m.role, m.content, false);
+      }
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function appendMessage(role, text, isTyping) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (role === 'user' ? 'user' : 'assistant') + (isTyping ? ' typing' : '');
+      div.textContent = text;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return div;
+    }
+
     async function send() {
       const text = promptEl.value.trim();
-      // История не хранится: отправляется только текущее сообщение
-      const messages = text ? [{ role: 'user', content: text }] : [];
+      if (!text) return;
 
+      history.push({ role: 'user', content: text });
+      promptEl.value = '';
+      appendMessage('user', text, false);
       clearError();
       sendBtn.disabled = true;
-      outputEl.classList.add('typing');
-      outputEl.textContent = 'печатает…';
+
+      const typingEl = appendMessage('assistant', 'печатает…', true);
 
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: messages,
-          }),
+          body: JSON.stringify({ messages: history }),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          outputEl.classList.remove('typing');
-          outputEl.textContent = '';
+          history.pop();
+          renderChat();
+          promptEl.value = text;
           throw new Error(data.detail || ('Ошибка запроса: ' + res.status));
         }
 
-        outputEl.classList.remove('typing');
-        outputEl.textContent = data.reply || '';
-        promptEl.value = '';
+        typingEl.remove();
+        history.push({ role: 'assistant', content: data.reply || '' });
+        appendMessage('assistant', data.reply || '', false);
       } catch (err) {
+        typingEl.remove();
         showError(err.message || 'Неизвестная ошибка');
       } finally {
         sendBtn.disabled = false;
@@ -132,12 +461,243 @@
     sendBtn.addEventListener('click', send);
 
     promptEl.addEventListener('keydown', (e) => {
-      // Ctrl+Enter / Cmd+Enter для отправки
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      // Отправка по Enter (без Shift — иначе перенос строки)
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         send();
       }
     });
+
+    clearBtn.addEventListener('click', () => {
+      history = [];
+      renderChat();
+    });
+
+    // Переключение режимов (сайдбар + основная область)
+    const normalMain = document.getElementById('normalMain');
+    const compareMain = document.getElementById('compareMain');
+    function setMode(mode) {
+      const normal = mode === 'normal';
+      normalPanel.classList.toggle('hidden', !normal);
+      comparePanel.classList.toggle('hidden', normal);
+      normalMain.classList.toggle('hidden', !normal);
+      compareMain.classList.toggle('hidden', normal);
+      modeNormal.classList.toggle('active', normal);
+      modeCompare.classList.toggle('active', !normal);
+    }
+    modeNormal.addEventListener('click', () => setMode('normal'));
+    modeCompare.addEventListener('click', () => setMode('compare'));
+    setMode('normal');
+    renderChat();
+
+    async function compare() {
+      const prompt = cmpPromptEl.value.trim();
+      if (!prompt) return;
+
+      const formatGuide = fmtGuideEl.value.trim() || DEFAULT_FORMAT_GUIDE;
+      const maxTokens = parseInt(maxTokensEl.value, 10) || 200;
+      const stopSeq = stopSeqEl.value.trim();
+
+      clearError();
+      cmpBtn.disabled = true;
+      freeOut.classList.add('typing');
+      conOut.classList.add('typing');
+      freeOut.textContent = 'печатает…';
+      conOut.textContent = 'печатает…';
+      freeMeta.textContent = '';
+      conMeta.textContent = '';
+
+      try {
+        const res = await fetch('/api/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            format_guide: formatGuide,
+            max_tokens: maxTokens,
+            stop: stopSeq,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          freeOut.classList.remove('typing');
+          conOut.classList.remove('typing');
+          freeOut.textContent = '';
+          conOut.textContent = '';
+          throw new Error(data.detail || ('Ошибка запроса: ' + res.status));
+        }
+
+        freeOut.classList.remove('typing');
+        conOut.classList.remove('typing');
+        freeOut.textContent = data.unconstrained.content || '';
+        conOut.textContent = data.constrained.content || '';
+
+        freeMeta.textContent =
+          `finish_reason=${data.unconstrained.finish_reason} | ` +
+          `tokens=${data.unconstrained.completion_tokens} | max_tokens=${data.unconstrained.max_tokens}`;
+        conMeta.textContent =
+          `finish_reason=${data.constrained.finish_reason} | ` +
+          `tokens=${data.constrained.completion_tokens} | max_tokens=${data.constrained.max_tokens} | ` +
+          `stop="${data.constrained.stop || '—'}"`;
+      } catch (err) {
+        showError(err.message || 'Неизвестная ошибка');
+      } finally {
+        cmpBtn.disabled = false;
+      }
+    }
+
+    cmpBtn.addEventListener('click', compare);
+
+    cmpPromptEl.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        compare();
+      }
+    });
+
+    const stabilityBtn = document.getElementById('stabilityBtn');
+    const stabilityRunsEl = document.getElementById('stabilityRuns');
+    const stabilityOut = document.getElementById('stabilityOut');
+    const stabilitySummary = document.getElementById('stabilitySummary');
+
+    function tryParseJson(text, stop) {
+      let t = (text || '').trim();
+      if (stop) {
+        const s = stop.trim();
+        if (s && t.endsWith(s)) t = t.slice(0, -s.length).trim();
+      }
+      if (t.startsWith('```')) {
+        t = t.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+      try { return { ok: true, data: JSON.parse(t) }; }
+      catch (e) { return { ok: false, data: null }; }
+    }
+
+    function highlightJson(obj) {
+      const json = JSON.stringify(obj, null, 2);
+      const esc = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return esc.replace(
+        /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+        (m) => {
+          let cls = 'jnum';
+          if (/^"/.test(m)) cls = /:\s*$/.test(m) ? 'jkey' : 'jstr';
+          else if (/true|false/.test(m)) cls = 'jbool';
+          else if (/null/.test(m)) cls = 'jnull';
+          return `<span class="${cls}">${m}</span>`;
+        }
+      );
+    }
+
+    function schemaKeys(parsed) {
+      if (parsed === null || typeof parsed !== 'object') return String(parsed);
+      return '{ ' + Object.keys(parsed).join(', ') + ' }';
+    }
+
+    async function stability() {
+      const prompt = cmpPromptEl.value.trim();
+      if (!prompt) {
+        showError('Сначала введите prompt — он общий для сравнения и проверки стабильности.');
+        return;
+      }
+
+      const formatGuide = fmtGuideEl.value.trim() || DEFAULT_FORMAT_GUIDE;
+      const maxTokens = parseInt(maxTokensEl.value, 10) || 200;
+      const stopSeq = stopSeqEl.value.trim();
+      const repeats = Math.min(20, Math.max(1, parseInt(stabilityRunsEl.value, 10) || 3));
+
+      clearError();
+      stabilityBtn.disabled = true;
+      stabilitySummary.textContent = '';
+      stabilityOut.innerHTML = '';
+      const waiting = document.createElement('div');
+      waiting.className = 'meta typing';
+      waiting.textContent = `прогоняем ${repeats} раз…`;
+      stabilityOut.appendChild(waiting);
+
+      try {
+        const res = await fetch('/api/stability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            repeats,
+            format_guide: formatGuide,
+            max_tokens: maxTokens,
+            stop: stopSeq,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          waiting.remove();
+          throw new Error(data.detail || ('Ошибка запроса: ' + res.status));
+        }
+
+        waiting.remove();
+
+        const pct = Math.round((data.summary.valid_json / data.summary.total) * 100);
+        const allOk = data.summary.all_valid;
+        const parsedRuns = data.runs.map((r) => {
+          const p = tryParseJson(r.content, stopSeq);
+          return { run: r, parsed: p.ok ? p.data : null };
+        });
+        const schemas = parsedRuns.map((x) => (x.parsed !== null ? schemaKeys(x.parsed) : '(не JSON)'));
+        const schemaSame = schemas.every((s) => s === schemas[0]);
+
+        let head = `<div class="stab-head">`;
+        head += `<div class="stab-badge ${allOk ? 'ok' : 'bad'}">${allOk ? '✓' : '✗'}</div>`;
+        head += `<div><div class="stab-title">${
+          allOk ? 'Формат детерминирован' : 'Есть отклонения от формата'
+        }</div>`;
+        head += `<div class="stab-sub">${data.summary.valid_json} из ${data.summary.total} прогонов — валидный JSON</div></div></div>`;
+        head += `<div class="stab-bar"><div class="stab-fill ${allOk ? '' : 'bad'}" style="width: ${pct}%"></div></div>`;
+        head += `<div class="stab-schema">Схема: ${schemas[0] || '—'}${
+          schemaSame ? ` — одинакова во всех ${data.summary.total} прогонах` : ' — РАЗЛИЧАЕТСЯ между прогонами'
+        }</div>`;
+        stabilitySummary.innerHTML = head;
+
+        for (const { run, parsed } of parsedRuns) {
+          const block = document.createElement('div');
+          block.className = 'run';
+
+          const headRow = document.createElement('div');
+          headRow.className = 'run-head';
+          const badge = document.createElement('span');
+          badge.className = 'badge ' + (run.valid_json ? 'ok' : 'bad');
+          badge.textContent = run.valid_json ? 'JSON ✓' : 'JSON ✗';
+          headRow.appendChild(badge);
+          if (parsed !== null) {
+            const sch = document.createElement('span');
+            sch.className = 'badge dim';
+            sch.textContent = 'Схема: ' + schemaKeys(parsed);
+            headRow.appendChild(sch);
+          }
+          const meta = document.createElement('span');
+          meta.className = 'meta';
+          meta.textContent =
+            `прогон ${run.run} | finish_reason=${run.finish_reason} | tokens=${run.completion_tokens}`;
+          headRow.appendChild(meta);
+          block.appendChild(headRow);
+
+          const pre = document.createElement('div');
+          pre.className = 'output' + (parsed !== null ? ' json' : '');
+          pre.innerHTML = parsed !== null ? highlightJson(parsed) : '';
+          if (parsed === null) pre.textContent = run.content || '(пусто)';
+          block.appendChild(pre);
+
+          stabilityOut.appendChild(block);
+        }
+      } catch (err) {
+        waiting.remove();
+        showError(err.message || 'Неизвестная ошибка');
+      } finally {
+        stabilityBtn.disabled = false;
+      }
+    }
+
+    stabilityBtn.addEventListener('click', stability);
   </script>
 </body>
 </html>
